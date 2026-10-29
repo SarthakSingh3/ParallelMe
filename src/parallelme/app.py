@@ -1,7 +1,8 @@
 """Streamlit Interactive Application for ParallelMe Decision Simulator.
 
 Supports multi-language (English, Hindi, Hinglish), multi-domain decisions
-(travel, fitness, career, financial, custom), and guided scenario wizards.
+(travel, fitness, career, financial, custom), and a conversational Q&A wizard
+for effortlessly adding alternative scenarios.
 """
 
 from __future__ import annotations
@@ -40,6 +41,38 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
+# Custom Styling for polished, friendly visual cards
+st.markdown(
+    """
+    <style>
+    .scenario-card {
+        background-color: #1e222b;
+        border: 1px solid #30363d;
+        border-radius: 10px;
+        padding: 18px;
+        margin-bottom: 16px;
+    }
+    .badge-feasible {
+        background-color: #238636;
+        color: white;
+        padding: 4px 10px;
+        border-radius: 12px;
+        font-size: 13px;
+        font-weight: bold;
+    }
+    .badge-infeasible {
+        background-color: #da3633;
+        color: white;
+        padding: 4px 10px;
+        border-radius: 12px;
+        font-size: 13px;
+        font-weight: bold;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
+
 # Initialize Database
 DB_PATH = Path("parallelme.db")
 db = Database(str(DB_PATH))
@@ -50,7 +83,6 @@ if len(existing_decisions) < 2:
     templates = get_prebuilt_templates()
     for tkey in ["trip_planning", "fitness_health", "career_study"]:
         init_dec = create_decision_from_template(tkey)
-        # Check if already in db by title to avoid duplicate
         if not any(d.title == init_dec.title for d in existing_decisions):
             db.save_decision(init_dec)
 
@@ -97,7 +129,6 @@ st.sidebar.markdown("---")
 st.sidebar.subheader(f"📌 {T['active_decision']}")
 dec_titles = {d.id: d.title for d in all_decisions}
 
-# Safe index resolution
 current_id = st.session_state["active_decision"].id
 options_keys = list(dec_titles.keys())
 safe_index = options_keys.index(current_id) if current_id in options_keys else 0
@@ -136,7 +167,6 @@ with st.sidebar.expander(T["create_new_decision"], expanded=False):
 
     if st.button(T["btn_create"], type="primary"):
         if selected_tpl_key == "custom":
-            # Generate clean starter custom decision with 2 balanced options so it never starts empty!
             starter_d = Decision(
                 title=custom_name.strip() if custom_name.strip() else "My Custom Decision",
                 description="Explore alternative plans under real uncertainty.",
@@ -236,7 +266,7 @@ with tab_overview:
     st.caption("A fair comparison requires that every alternative scenario respects the same maximum budget capacity.")
 
     if not active_dec.scenarios:
-        st.warning("⚠️ No scenarios found for this decision. Click the 'Alternative Choices' tab to add at least 2 options, or create a decision using a template in the sidebar!")
+        st.warning("⚠️ No scenarios found for this decision. Use the guided assistant in the 'Alternative Choices' tab to add options!")
     else:
         audit_cards = []
         all_feasible = True
@@ -271,106 +301,212 @@ with tab_overview:
 
 
 # -----------------------------------------------------------------------------
-# TAB 2: ALTERNATIVE SCENARIOS
+# TAB 2: ALTERNATIVE SCENARIOS (SIMPLIFIED & CONVERSATIONAL Q&A)
 # -----------------------------------------------------------------------------
 with tab_scenarios:
-    st.subheader(T["tab_scenarios"])
-    st.markdown("Each scenario represents a realistic, competing choice (e.g. Flight vs Train, or Gym vs Home Workout).")
+    st.subheader(f"🔀 {T['tab_scenarios']}")
+    st.markdown("Compare different paths side-by-side. Each option allocates your weekly budget differently.")
 
+    # 1. Existing Scenarios Display (Clean Visual Cards)
     if not active_dec.scenarios:
-        st.warning("No scenarios added yet. Add at least two alternatives below to compare them!")
+        st.warning("⚠️ No options added yet. Answer the simple questions below to add your first option!")
+    else:
+        st.markdown(f"### Current Alternatives ({len(active_dec.scenarios)} options)")
+        cols_sc = st.columns(min(len(active_dec.scenarios), 3))
+        for idx, sc in enumerate(active_dec.scenarios):
+            col_target = cols_sc[idx % len(cols_sc)]
+            with col_target:
+                is_ok = sc.total_planned_hours <= active_dec.max_weekly_hours + 1e-9
+                status_color = "green" if is_ok else "red"
+                status_text = "Within Budget" if is_ok else "Over Budget"
 
-    for idx, sc in enumerate(active_dec.scenarios):
-        with st.expander(f"🔹 Option {idx + 1}: **{sc.name}** (Allocates {sc.total_planned_hours:.1f} / {active_dec.max_weekly_hours:.1f} units)", expanded=True):
-            st.markdown(f"*{sc.description or 'No description provided.'}*")
+                with st.container(border=True):
+                    st.markdown(f"#### 🏷️ Option {idx+1}: **{sc.name}**")
+                    if sc.description:
+                        st.caption(sc.description)
 
-            col_a, col_b = st.columns([1, 1])
-            with col_a:
-                st.markdown("**Weekly Allocation:**")
-                alloc_df = pd.DataFrame(
-                    [{"Activity / Track": k, "Resource per Week": f"{v} units"} for k, v in sc.allocations.items()]
-                )
-                st.dataframe(alloc_df, use_container_width=True)
+                    # Show allocation breakdown
+                    st.markdown(f"**Weekly Resource Used:** `{sc.total_planned_hours:.1f}` / `{active_dec.max_weekly_hours:.1f}`")
+                    for act, hrs in sc.allocations.items():
+                        st.write(f"• **{act}:** {hrs:.1f} hrs/units")
+                        if act in sc.target_thresholds:
+                            st.caption(f"  🎯 Target Goal: {sc.target_thresholds[act]:.0f} units")
 
-            with col_b:
-                st.markdown("**Productivity & Benchmarks:**")
-                meta_rows = []
-                for k, cfg in sc.track_configs.items():
-                    meta_rows.append(
-                        {
-                            "Activity": k,
-                            "Speed (Units/Hr)": cfg.velocity_mean,
-                            "Target Goal": sc.target_thresholds.get(k, "Open"),
-                        }
-                    )
-                st.dataframe(pd.DataFrame(meta_rows), use_container_width=True)
-
-            if st.button(f"🗑️ Delete Scenario '{sc.name}'", key=f"del_sc_{sc.id}"):
-                active_dec.scenarios = [s for s in active_dec.scenarios if s.id != sc.id]
-                db.save_decision(active_dec)
-                st.rerun()
+                    if st.button(f"❌ Remove Option {idx+1}", key=f"del_opt_{sc.id}", use_container_width=True):
+                        active_dec.scenarios = [s for s in active_dec.scenarios if s.id != sc.id]
+                        db.save_decision(active_dec)
+                        st.rerun()
 
     st.markdown("---")
-    st.subheader("➕ Add Another Alternative Scenario")
 
-    with st.form("simple_add_scenario"):
-        new_sc_name = st.text_input("Scenario Name", placeholder="e.g. Option C: Hybrid Weekend Routine")
-        new_sc_desc = st.text_input("Short Description / Premise", placeholder="e.g. Rent a car and split costs with 3 friends")
+    # 2. CONVERSATIONAL Q&A WIZARD TO ADD A NEW SCENARIO
+    st.markdown(f"### {T['wizard_title']}")
+    st.caption(T["wizard_subtitle"])
 
-        col_input1, col_input2 = st.columns(2)
-        with col_input1:
-            st.markdown("**Activity 1:**")
-            act1_name = st.text_input("Activity 1 Name", value="Core_Focus")
-            act1_hours = st.number_input("Resource Allocated (per week)", min_value=0.0, max_value=active_dec.max_weekly_hours, value=min(10.0, active_dec.max_weekly_hours))
-            act1_speed = st.number_input("Progress Speed (units per hour)", min_value=0.1, max_value=20.0, value=1.0)
-            act1_goal = st.number_input("Target Goal Benchmark (optional)", min_value=0.0, max_value=10000.0, value=50.0)
+    with st.container(border=True):
+        # Question 1: Name
+        sc_q1 = st.text_input(
+            T["q1_name"],
+            placeholder=T["q1_placeholder"],
+            key="wizard_sc_name",
+        )
 
-        with col_input2:
-            st.markdown("**Activity 2 (Optional):**")
-            act2_name = st.text_input("Activity 2 Name", value="Secondary_Focus")
-            act2_hours = st.number_input("Resource Allocated (Activity 2)", min_value=0.0, max_value=active_dec.max_weekly_hours, value=0.0)
-            act2_speed = st.number_input("Progress Speed (Activity 2)", min_value=0.1, max_value=20.0, value=1.0)
-            act2_goal = st.number_input("Target Goal (Activity 2)", min_value=0.0, max_value=10000.0, value=0.0)
+        col_q2, col_q3 = st.columns([1, 1])
+        # Question 2: Primary Activity
+        with col_q2:
+            sc_q2_act1 = st.text_input(
+                T["q2_main_activity"],
+                value="Main_Focus",
+                placeholder=T["q2_main_placeholder"],
+                key="wizard_act1_name",
+            )
+        # Question 3: Hours on Primary Activity (Slider)
+        with col_q3:
+            max_cap = float(active_dec.max_weekly_hours)
+            default_h1 = min(12.0, max_cap)
+            sc_q3_h1 = st.slider(
+                T["q3_hours"],
+                min_value=1.0,
+                max_value=max_cap,
+                value=default_h1,
+                step=0.5,
+                key="wizard_act1_hours",
+            )
 
-        submitted_new_sc = st.form_submit_button("Add Alternative Scenario", type="primary")
-        if submitted_new_sc:
-            if not new_sc_name.strip():
-                st.error("Please enter a scenario name.")
+        # Question 4: Optional Secondary Activity
+        has_second = st.checkbox(
+            T["q4_second_activity"],
+            value=(max_cap - sc_q3_h1 >= 2.0),
+            key="wizard_has_second",
+        )
+
+        sc_q4_act2 = ""
+        sc_q5_h2 = 0.0
+        if has_second:
+            col_q4, col_q5 = st.columns([1, 1])
+            with col_q4:
+                sc_q4_act2 = st.text_input(
+                    "Secondary Activity Name",
+                    value="Secondary_Task",
+                    placeholder=T["q4_second_placeholder"],
+                    key="wizard_act2_name",
+                )
+            with col_q5:
+                remaining_budget = max(0.0, max_cap - sc_q3_h1)
+                sc_q5_h2 = st.slider(
+                    T["q5_second_hours"],
+                    min_value=0.5,
+                    max_value=max_cap,
+                    value=min(4.0, max(0.5, remaining_budget)),
+                    step=0.5,
+                    key="wizard_act2_hours",
+                )
+
+        # Question 5: Goal Benchmark
+        sc_q6_goal = st.number_input(
+            T["q6_goal"],
+            min_value=0.0,
+            max_value=10000.0,
+            value=50.0,
+            step=10.0,
+            key="wizard_goal",
+        )
+
+        # Live calculation preview badge
+        total_wizard_hours = sc_q3_h1 + sc_q5_h2
+        if total_wizard_hours <= max_cap:
+            st.success(
+                f"✅ **Total Allocation:** {total_wizard_hours:.1f} / {max_cap:.1f} units per week "
+                f"({max_cap - total_wizard_hours:.1f} buffer left for breaks/rest)"
+            )
+        else:
+            st.error(
+                f"⚠️ **Total Allocation:** {total_wizard_hours:.1f} / {max_cap:.1f} units "
+                f"(Exceeds capacity by {total_wizard_hours - max_cap:.1f} units! Please reduce hours on the slider.)"
+            )
+
+        if st.button(T["btn_add_scenario"], type="primary", use_container_width=True):
+            if not sc_q1.strip():
+                st.error("Please enter a name for this option in Question 1.")
+            elif total_wizard_hours > max_cap + 1e-9:
+                st.error(f"Cannot save: Total hours ({total_wizard_hours:.1f}) exceed weekly budget ({max_cap:.1f}).")
             else:
-                allocs = {}
-                configs = {}
-                thresholds = {}
+                allocations_dict = {sc_q2_act1.strip(): float(sc_q3_h1)}
+                configs_dict = {sc_q2_act1.strip(): TrackConfig(name=sc_q2_act1.strip(), velocity_mean=1.2)}
+                thresholds_dict = {sc_q2_act1.strip(): float(sc_q6_goal)} if sc_q6_goal > 0 else {}
 
-                if act1_name.strip():
-                    allocs[act1_name] = float(act1_hours)
-                    configs[act1_name] = TrackConfig(name=act1_name, velocity_mean=float(act1_speed))
-                    if act1_goal > 0:
-                        thresholds[act1_name] = float(act1_goal)
+                if has_second and sc_q4_act2.strip() and sc_q5_h2 > 0:
+                    allocations_dict[sc_q4_act2.strip()] = float(sc_q5_h2)
+                    configs_dict[sc_q4_act2.strip()] = TrackConfig(name=sc_q4_act2.strip(), velocity_mean=1.0)
 
-                if act2_name.strip() and act2_hours > 0:
-                    allocs[act2_name] = float(act2_hours)
-                    configs[act2_name] = TrackConfig(name=act2_name, velocity_mean=float(act2_speed))
-                    if act2_goal > 0:
-                        thresholds[act2_name] = float(act2_goal)
-
-                created_scenario = Scenario(
+                new_sc = Scenario(
                     decision_id=active_dec.id,
-                    name=new_sc_name.strip(),
-                    description=new_sc_desc.strip(),
-                    allocations=allocs,
-                    track_configs=configs,
-                    target_thresholds=thresholds,
+                    name=sc_q1.strip(),
+                    description=f"Allocates {sc_q3_h1:.1f} hrs to {sc_q2_act1}" + (f" and {sc_q5_h2:.1f} hrs to {sc_q4_act2}" if has_second else ""),
+                    allocations=allocations_dict,
+                    track_configs=configs_dict,
+                    target_thresholds=thresholds_dict,
                 )
 
                 try:
-                    active_dec.scenarios.append(created_scenario)
+                    active_dec.scenarios.append(new_sc)
                     validate_decision(active_dec)
                     db.save_decision(active_dec)
-                    st.success(f"Added scenario '{new_sc_name}'!")
+                    st.success(f"Added option '{sc_q1}' successfully!")
                     st.rerun()
-                except ValidationError as e:
+                except ValidationError as err:
                     active_dec.scenarios.pop()
-                    st.error(f"Cannot add: {e}")
+                    st.error(f"Error: {err}")
+
+    # 3. 1-CLICK PRESET BUTTONS
+    st.markdown(f"### {T['quick_presets_title']}")
+    st.caption("Need ideas? Click any button to add a pre-configured balanced alternative instantly:")
+    col_p1, col_p2, col_p3 = st.columns(3)
+
+    cap = float(active_dec.max_weekly_hours)
+    if col_p1.button("⚡ Add 'High Focus' (85% on Main Focus)", use_container_width=True):
+        opt = Scenario(
+            decision_id=active_dec.id,
+            name=f"High Focus Strategy ({len(active_dec.scenarios)+1})",
+            description="Focuses 85% of time on primary goal with minimal distractions.",
+            allocations={"Core_Objective": round(cap * 0.85, 1)},
+            track_configs={"Core_Objective": TrackConfig(name="Core_Objective", velocity_mean=1.3)},
+            target_thresholds={"Core_Objective": 75.0},
+        )
+        active_dec.scenarios.append(opt)
+        db.save_decision(active_dec)
+        st.rerun()
+
+    if col_p2.button("⚡ Add 'Balanced 50/50' (Even Split)", use_container_width=True):
+        half = round((cap * 0.9) / 2.0, 1)
+        opt = Scenario(
+            decision_id=active_dec.id,
+            name=f"Balanced Strategy ({len(active_dec.scenarios)+1})",
+            description="Splits effort equally across two complementary activities.",
+            allocations={"Activity_A": half, "Activity_B": half},
+            track_configs={
+                "Activity_A": TrackConfig(name="Activity_A", velocity_mean=1.1),
+                "Activity_B": TrackConfig(name="Activity_B", velocity_mean=1.1),
+            },
+            target_thresholds={"Activity_A": 40.0, "Activity_B": 40.0},
+        )
+        active_dec.scenarios.append(opt)
+        db.save_decision(active_dec)
+        st.rerun()
+
+    if col_p3.button("⚡ Add 'Flexible Plan' (Low Burnout)", use_container_width=True):
+        light = round(cap * 0.65, 1)
+        opt = Scenario(
+            decision_id=active_dec.id,
+            name=f"Flexible Buffer Plan ({len(active_dec.scenarios)+1})",
+            description="Moderate pace with large buffer hours to prevent fatigue or disruptions.",
+            allocations={"Sustainable_Pace": light},
+            track_configs={"Sustainable_Pace": TrackConfig(name="Sustainable_Pace", velocity_mean=1.0)},
+            target_thresholds={"Sustainable_Pace": 45.0},
+        )
+        active_dec.scenarios.append(opt)
+        db.save_decision(active_dec)
+        st.rerun()
 
 
 # -----------------------------------------------------------------------------
@@ -384,7 +520,7 @@ with tab_simulate:
     )
 
     if len(active_dec.scenarios) < 2:
-        st.warning("⚠️ You need at least 2 scenarios to run a comparison simulation. Add another scenario in the 'Alternative Choices' tab!")
+        st.warning("⚠️ You need at least 2 scenarios to run a comparison simulation. Add another option in the 'Alternative Choices' tab!")
     else:
         col_c1, col_c2, col_c3 = st.columns([2, 2, 2])
         sim_iterations = col_c1.select_slider(
@@ -482,7 +618,6 @@ with tab_sensitivity:
     if len(active_dec.scenarios) < 2:
         st.warning("⚠️ Sensitivity ranking analysis requires at least 2 scenarios.")
     else:
-        # Collect distinct activity tracks
         distinct_tracks = set()
         for sc in active_dec.scenarios:
             distinct_tracks.update(sc.allocations.keys())

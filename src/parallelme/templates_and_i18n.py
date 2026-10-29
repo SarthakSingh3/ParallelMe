@@ -1,4 +1,4 @@
-"""Templates and Multi-language localization dictionary for ParallelMe.
+"""Templates, Q&A Wizard questions, and Multi-language localization dictionary for ParallelMe.
 
 Supports:
 - English (EN)
@@ -12,7 +12,7 @@ from parallelme.models import Decision, Scenario, TrackConfig
 
 TRANSLATIONS: Dict[str, Dict[str, str]] = {
     "EN": {
-        "app_title": "ParallelMe — Alternative Decision Simulator",
+        "app_title": "ParallelMe — Decision Simulator",
         "app_tagline": "Explore different paths for any real-life decision under uncertainty",
         "select_language": "Language / भाषा",
         "active_decision": "Active Decision",
@@ -41,6 +41,20 @@ TRANSLATIONS: Dict[str, Dict[str, str]] = {
         "export_json": "📥 Export Plan (JSON)",
         "export_csv": "📥 Download Simulation Data (CSV)",
         "upload_json": "Upload Saved Plan",
+        # Wizard Q&A
+        "wizard_title": "💬 Guided Assistant: Add a New Alternative",
+        "wizard_subtitle": "Answer 3 simple questions. We'll automatically build the scenario for you!",
+        "q1_name": "1. What do you want to call this option?",
+        "q1_placeholder": "e.g. Flight + Luxury Resort, or Intensive DSA Practice",
+        "q2_main_activity": "2. What is the primary activity or expense?",
+        "q2_main_placeholder": "e.g. Sightseeing, LeetCode, Gym Workouts, Rent",
+        "q3_hours": "3. How much weekly time/resource will you give to this main activity?",
+        "q4_second_activity": "4. Do you have a secondary activity or backup task?",
+        "q4_second_placeholder": "e.g. Relaxation, Project Work, Cardio, Reading",
+        "q5_second_hours": "How much time/resource for this secondary activity?",
+        "q6_goal": "5. What is your overall target goal benchmark? (e.g. 50 units/problems/places)",
+        "btn_add_scenario": "✨ Create This Option",
+        "quick_presets_title": "⚡ Quick Presets (1-Click)",
     },
     "HI": {
         "app_title": "पैरेलल-मी (ParallelMe) — फैसला सिम्युलेटर",
@@ -72,6 +86,20 @@ TRANSLATIONS: Dict[str, Dict[str, str]] = {
         "export_json": "📥 योजना डाउनलोड करें (JSON)",
         "export_csv": "📥 सिमुलेशन डेटा डाउनलोड करें (CSV)",
         "upload_json": "पुरानी योजना अपलोड करें",
+        # Wizard Q&A
+        "wizard_title": "💬 आसान सवाल-जवाब: नया विकल्प जोड़ें",
+        "wizard_subtitle": "बस 3-4 सीधे सवालों के जवाब दीजिए, हम अपने आप पूरा विकल्प तैयार कर देंगे!",
+        "q1_name": "1. इस विकल्प का क्या नाम रखना चाहते हैं?",
+        "q1_placeholder": "जैसे: फ्लाइट से रिसॉर्ट, या सिर्फ कोडिंग पर ध्यान",
+        "q2_main_activity": "2. सबसे मुख्य काम या गतिविधि क्या होगी?",
+        "q2_main_placeholder": "जैसे: घूमना-फिरना, कोडिंग, जिम, पढ़ाई",
+        "q3_hours": "3. इस मुख्य काम को हर हफ्ते कितना समय/बजट देंगे?",
+        "q4_second_activity": "4. क्या कोई दूसरा काम भी साथ में करेंगे?",
+        "q4_second_placeholder": "जैसे: आराम, प्रोजेक्ट बनाना, कार्डियो",
+        "q5_second_hours": "इस दूसरे काम को कितना समय/बजट देंगे?",
+        "q6_goal": "5. आपका लक्ष्य क्या है? (जैसे: 50 जगहें, 100 सवाल, 50 प्रोजेक्ट्स)",
+        "btn_add_scenario": "✨ यह विकल्प जोड़ें",
+        "quick_presets_title": "⚡ 1-क्लिक रेडीमेड विकल्प",
     },
     "HING": {
         "app_title": "ParallelMe — Decision Simulator",
@@ -103,6 +131,20 @@ TRANSLATIONS: Dict[str, Dict[str, str]] = {
         "export_json": "📥 Plan Export Karein (JSON)",
         "export_csv": "📥 CSV Data Download Karein",
         "upload_json": "Saved JSON Plan Load Karein",
+        # Wizard Q&A
+        "wizard_title": "💬 Simple Q&A Assistant: Naya Option Banayein",
+        "wizard_subtitle": "Bas 3 simple questions ke answer dein, system aapke liye automatic option bana dega!",
+        "q1_name": "1. Is option ko kya naam dena chahenge?",
+        "q1_placeholder": "jaise: Flight + Resort Stay, ya Pure DSA Focus",
+        "q2_main_activity": "2. Main activity ya kharcha kya hoga?",
+        "q2_main_placeholder": "jaise: Sightseeing, Coding, Gym, Daily Travel",
+        "q3_hours": "3. Is main activity ko weekly kitna time/budget denge?",
+        "q4_second_activity": "4. Kya koi second activity ya backup task bhi hai?",
+        "q4_second_placeholder": "jaise: Chill / Rest, Project Work, Side Reading",
+        "q5_second_hours": "Is second activity ko weekly kitna time denge?",
+        "q6_goal": "5. Overall target goal kya hai? (jaise: 50 points, 100 questions)",
+        "btn_add_scenario": "✨ Ye Option Add Karein",
+        "quick_presets_title": "⚡ 1-Click Quick Presets",
     },
 }
 
@@ -111,7 +153,7 @@ def get_prebuilt_templates() -> Dict[str, Dict[str, Any]]:
     """Returns ready-to-use, multi-domain decision templates with 2-3 pre-filled scenarios."""
     return {
         "trip_planning": {
-            "title": "🏖️ Goa Trip Planning: Luxury vs Budget vs Roadtrip",
+            "title": "🏖️ Goa Trip Planning: Luxury Flight vs Train vs Roadtrip",
             "description": "Planning a 2-week vacation comparing luxury flight travel, budget train backpacking, and rental roadtrip under a 40-hour / energy budget.",
             "time_horizon_weeks": 2,
             "max_weekly_hours": 40.0,
