@@ -7,6 +7,7 @@ for effortlessly adding alternative scenarios.
 
 from __future__ import annotations
 
+import importlib
 import json
 from pathlib import Path
 from typing import Dict
@@ -15,6 +16,9 @@ import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 import streamlit as st
+
+import parallelme.templates_and_i18n
+importlib.reload(parallelme.templates_and_i18n)
 
 from parallelme.engine import run_simulation
 from parallelme.export import (
@@ -100,22 +104,27 @@ if "last_simulation_run" not in st.session_state:
     st.session_state["last_simulation_run"] = None
 
 
-# Language Helper
-lang_key = st.session_state["lang"]
-T = TRANSLATIONS.get(lang_key, TRANSLATIONS["EN"])
+# Safe translation helper function to guarantee zero KeyErrors
+def tr(key: str, default: str = "") -> str:
+    lang = st.session_state.get("lang", "EN")
+    dict_for_lang = TRANSLATIONS.get(lang, TRANSLATIONS.get("EN", {}))
+    if key in dict_for_lang:
+        return dict_for_lang[key]
+    fallback_en = TRANSLATIONS.get("EN", {})
+    return fallback_en.get(key, default or key)
 
 
 # -----------------------------------------------------------------------------
 # SIDEBAR
 # -----------------------------------------------------------------------------
 st.sidebar.markdown(f"## ⚖️ **ParallelMe**")
-st.sidebar.caption(T["app_tagline"])
+st.sidebar.caption(tr("app_tagline", "Explore different paths for any real-life decision under uncertainty"))
 
 # Language Selector
 lang_choice = st.sidebar.radio(
     "🌐 Language / भाषा",
     options=["English", "हिन्दी (Hindi)", "Hinglish"],
-    index=0 if lang_key == "EN" else (1 if lang_key == "HI" else 2),
+    index=0 if st.session_state["lang"] == "EN" else (1 if st.session_state["lang"] == "HI" else 2),
     horizontal=True,
 )
 mapped_lang = "EN" if "English" in lang_choice else ("HI" if "हिन्दी" in lang_choice else "HING")
@@ -126,7 +135,7 @@ if mapped_lang != st.session_state["lang"]:
 st.sidebar.markdown("---")
 
 # Decision Selection Dropdown
-st.sidebar.subheader(f"📌 {T['active_decision']}")
+st.sidebar.subheader(f"📌 {tr('active_decision', 'Active Decision')}")
 dec_titles = {d.id: d.title for d in all_decisions}
 
 current_id = st.session_state["active_decision"].id
@@ -134,7 +143,7 @@ options_keys = list(dec_titles.keys())
 safe_index = options_keys.index(current_id) if current_id in options_keys else 0
 
 selected_id = st.sidebar.selectbox(
-    T["choose_decision"],
+    tr("choose_decision", "Choose Decision"),
     options=options_keys,
     format_func=lambda did: dec_titles.get(did, "Untitled"),
     index=safe_index,
@@ -147,7 +156,7 @@ if selected_id and selected_id != st.session_state["active_decision"].id:
 
 
 # CREATE NEW DECISION WIZARD
-with st.sidebar.expander(T["create_new_decision"], expanded=False):
+with st.sidebar.expander(tr("create_new_decision", "➕ Create New Decision"), expanded=False):
     st.markdown("### 🎯 Quick Start with Template")
     template_choices = {
         "trip_planning": "🏖️ Trip & Vacation Plan (Goa / Roadtrip / Flights)",
@@ -158,14 +167,14 @@ with st.sidebar.expander(T["create_new_decision"], expanded=False):
     }
 
     selected_tpl_key = st.selectbox(
-        T["template_label"],
+        tr("template_label", "Choose a Ready-Made Template"),
         options=list(template_choices.keys()),
         format_func=lambda k: template_choices[k],
     )
 
-    custom_name = st.text_input(T["decision_title"], placeholder="e.g. My Goa Trip Plan")
+    custom_name = st.text_input(tr("decision_title", "Decision Title"), placeholder="e.g. My Goa Trip Plan")
 
-    if st.button(T["btn_create"], type="primary"):
+    if st.button(tr("btn_create", "Create Decision with Scenarios"), type="primary"):
         if selected_tpl_key == "custom":
             starter_d = Decision(
                 title=custom_name.strip() if custom_name.strip() else "My Custom Decision",
@@ -215,13 +224,13 @@ st.sidebar.caption("Data Portability")
 active_dec: Decision = st.session_state["active_decision"]
 
 st.sidebar.download_button(
-    label=T["export_json"],
+    label=tr("export_json", "📥 Export Plan (JSON)"),
     data=export_decision_to_json(active_dec),
     file_name=f"{active_dec.title.replace(' ', '_').lower()}.json",
     mime="application/json",
 )
 
-uploaded_file = st.sidebar.file_uploader(T["upload_json"], type=["json"])
+uploaded_file = st.sidebar.file_uploader(tr("upload_json", "Upload Saved Plan"), type=["json"])
 if uploaded_file is not None:
     try:
         content = uploaded_file.read().decode("utf-8")
@@ -239,11 +248,11 @@ if uploaded_file is not None:
 # -----------------------------------------------------------------------------
 tab_overview, tab_scenarios, tab_simulate, tab_sensitivity, tab_observations = st.tabs(
     [
-        T["tab_overview"],
-        T["tab_scenarios"],
-        T["tab_simulate"],
-        T["tab_sensitivity"],
-        T["tab_observations"],
+        tr("tab_overview", "📋 Summary & Feasibility"),
+        tr("tab_scenarios", "🎛️ Alternative Choices"),
+        tr("tab_simulate", "🎲 Simulate Futures"),
+        tr("tab_sensitivity", "🔍 Risk & Fragility"),
+        tr("tab_observations", "📈 Real Progress Log"),
     ]
 )
 
@@ -262,7 +271,7 @@ with tab_overview:
     col3.metric("🔀 Alternatives Defined", len(active_dec.scenarios))
 
     st.markdown("---")
-    st.subheader(f"🛡️ {T['resource_audit']}")
+    st.subheader(f"🛡️ {tr('resource_audit', 'Resource Feasibility Check')}")
     st.caption("A fair comparison requires that every alternative scenario respects the same maximum budget capacity.")
 
     if not active_dec.scenarios:
@@ -292,7 +301,7 @@ with tab_overview:
 
     with st.expander("🗑️ Delete this Decision"):
         st.caption("Permanently deletes this decision and all associated runs and observations.")
-        if st.button(T["btn_delete"], type="primary"):
+        if st.button(tr("btn_delete", "Delete Decision"), type="primary"):
             db.delete_decision(active_dec.id)
             remaining = db.list_decisions()
             st.session_state["active_decision"] = remaining[0] if remaining else None
@@ -304,7 +313,7 @@ with tab_overview:
 # TAB 2: ALTERNATIVE SCENARIOS (SIMPLIFIED & CONVERSATIONAL Q&A)
 # -----------------------------------------------------------------------------
 with tab_scenarios:
-    st.subheader(f"🔀 {T['tab_scenarios']}")
+    st.subheader(f"🔀 {tr('tab_scenarios', 'Alternative Choices')}")
     st.markdown("Compare different paths side-by-side. Each option allocates your weekly budget differently.")
 
     # 1. Existing Scenarios Display (Clean Visual Cards)
@@ -317,15 +326,12 @@ with tab_scenarios:
             col_target = cols_sc[idx % len(cols_sc)]
             with col_target:
                 is_ok = sc.total_planned_hours <= active_dec.max_weekly_hours + 1e-9
-                status_color = "green" if is_ok else "red"
-                status_text = "Within Budget" if is_ok else "Over Budget"
 
                 with st.container(border=True):
                     st.markdown(f"#### 🏷️ Option {idx+1}: **{sc.name}**")
                     if sc.description:
                         st.caption(sc.description)
 
-                    # Show allocation breakdown
                     st.markdown(f"**Weekly Resource Used:** `{sc.total_planned_hours:.1f}` / `{active_dec.max_weekly_hours:.1f}`")
                     for act, hrs in sc.allocations.items():
                         st.write(f"• **{act}:** {hrs:.1f} hrs/units")
@@ -340,14 +346,14 @@ with tab_scenarios:
     st.markdown("---")
 
     # 2. CONVERSATIONAL Q&A WIZARD TO ADD A NEW SCENARIO
-    st.markdown(f"### {T['wizard_title']}")
-    st.caption(T["wizard_subtitle"])
+    st.markdown(f"### {tr('wizard_title', '💬 Guided Assistant: Add a New Alternative')}")
+    st.caption(tr("wizard_subtitle", "Answer 3 simple questions. We'll automatically build the scenario for you!"))
 
     with st.container(border=True):
         # Question 1: Name
         sc_q1 = st.text_input(
-            T["q1_name"],
-            placeholder=T["q1_placeholder"],
+            tr("q1_name", "1. What do you want to call this option?"),
+            placeholder=tr("q1_placeholder", "e.g. Flight + Luxury Resort, or Intensive DSA Practice"),
             key="wizard_sc_name",
         )
 
@@ -355,9 +361,9 @@ with tab_scenarios:
         # Question 2: Primary Activity
         with col_q2:
             sc_q2_act1 = st.text_input(
-                T["q2_main_activity"],
+                tr("q2_main_activity", "2. What is the primary activity or expense?"),
                 value="Main_Focus",
-                placeholder=T["q2_main_placeholder"],
+                placeholder=tr("q2_main_placeholder", "e.g. Sightseeing, LeetCode, Gym Workouts, Rent"),
                 key="wizard_act1_name",
             )
         # Question 3: Hours on Primary Activity (Slider)
@@ -365,7 +371,7 @@ with tab_scenarios:
             max_cap = float(active_dec.max_weekly_hours)
             default_h1 = min(12.0, max_cap)
             sc_q3_h1 = st.slider(
-                T["q3_hours"],
+                tr("q3_hours", "3. How much weekly time/resource will you give to this main activity?"),
                 min_value=1.0,
                 max_value=max_cap,
                 value=default_h1,
@@ -375,7 +381,7 @@ with tab_scenarios:
 
         # Question 4: Optional Secondary Activity
         has_second = st.checkbox(
-            T["q4_second_activity"],
+            tr("q4_second_activity", "4. Do you have a secondary activity or backup task?"),
             value=(max_cap - sc_q3_h1 >= 2.0),
             key="wizard_has_second",
         )
@@ -388,13 +394,13 @@ with tab_scenarios:
                 sc_q4_act2 = st.text_input(
                     "Secondary Activity Name",
                     value="Secondary_Task",
-                    placeholder=T["q4_second_placeholder"],
+                    placeholder=tr("q4_second_placeholder", "e.g. Relaxation, Project Work, Cardio, Reading"),
                     key="wizard_act2_name",
                 )
             with col_q5:
                 remaining_budget = max(0.0, max_cap - sc_q3_h1)
                 sc_q5_h2 = st.slider(
-                    T["q5_second_hours"],
+                    tr("q5_second_hours", "How much time/resource for this secondary activity?"),
                     min_value=0.5,
                     max_value=max_cap,
                     value=min(4.0, max(0.5, remaining_budget)),
@@ -404,7 +410,7 @@ with tab_scenarios:
 
         # Question 5: Goal Benchmark
         sc_q6_goal = st.number_input(
-            T["q6_goal"],
+            tr("q6_goal", "5. What is your overall target goal benchmark? (e.g. 50 units/problems/places)"),
             min_value=0.0,
             max_value=10000.0,
             value=50.0,
@@ -425,7 +431,7 @@ with tab_scenarios:
                 f"(Exceeds capacity by {total_wizard_hours - max_cap:.1f} units! Please reduce hours on the slider.)"
             )
 
-        if st.button(T["btn_add_scenario"], type="primary", use_container_width=True):
+        if st.button(tr("btn_add_scenario", "✨ Create This Option"), type="primary", use_container_width=True):
             if not sc_q1.strip():
                 st.error("Please enter a name for this option in Question 1.")
             elif total_wizard_hours > max_cap + 1e-9:
@@ -459,7 +465,7 @@ with tab_scenarios:
                     st.error(f"Error: {err}")
 
     # 3. 1-CLICK PRESET BUTTONS
-    st.markdown(f"### {T['quick_presets_title']}")
+    st.markdown(f"### {tr('quick_presets_title', '⚡ Quick Presets (1-Click)')}")
     st.caption("Need ideas? Click any button to add a pre-configured balanced alternative instantly:")
     col_p1, col_p2, col_p3 = st.columns(3)
 
@@ -513,7 +519,7 @@ with tab_scenarios:
 # TAB 3: MONTE CARLO SIMULATION
 # -----------------------------------------------------------------------------
 with tab_simulate:
-    st.subheader(T["tab_simulate"])
+    st.subheader(tr("tab_simulate", "🎲 Simulate Futures"))
     st.markdown(
         "Instead of pretending to know the exact future, Monte Carlo runs **thousands of parallel simulations** "
         "accounting for real-life disruptions, sick days, fatigue, and schedule variations."
@@ -530,11 +536,11 @@ with tab_simulate:
             help="Higher iterations produce smoother, more stable outcome distributions.",
         )
         sim_seed = col_c2.number_input("Random Seed (for reproducibility)", min_value=0, max_value=999999, value=42)
-        trigger_sim = col_c3.button(T["btn_run_sim"], type="primary", use_container_width=True)
+        trigger_sim = col_c3.button(tr("btn_run_sim", "🚀 Simulate Possible Futures"), type="primary", use_container_width=True)
 
         if trigger_sim:
             try:
-                with st.spinner(T["sim_explainer"]):
+                with st.spinner(tr("sim_explainer", "Running 1,000 parallel futures...")):
                     run_snapshot = run_simulation(
                         decision=active_dec,
                         iterations=sim_iterations,
@@ -555,7 +561,7 @@ with tab_simulate:
             # Download CSV
             csv_text = export_simulation_run_to_csv(run)
             st.download_button(
-                label=T["export_csv"],
+                label=tr("export_csv", "📥 Download Simulation Data (CSV)"),
                 data=csv_text,
                 file_name=f"sim_results_{run.id[:8]}.csv",
                 mime="text/csv",
@@ -612,8 +618,8 @@ with tab_simulate:
 # TAB 4: SENSITIVITY & FRAGILITY
 # -----------------------------------------------------------------------------
 with tab_sensitivity:
-    st.subheader(T["fragility_title"])
-    st.markdown(T["fragility_desc"])
+    st.subheader(tr("fragility_title", "Assumption Fragility Test"))
+    st.markdown(tr("fragility_desc", "Checks if your preferred choice remains best even if things go 20% slower or faster."))
 
     if len(active_dec.scenarios) < 2:
         st.warning("⚠️ Sensitivity ranking analysis requires at least 2 scenarios.")
@@ -662,7 +668,7 @@ with tab_sensitivity:
 # TAB 5: EMPIRICAL OBSERVATIONS
 # -----------------------------------------------------------------------------
 with tab_observations:
-    st.subheader(T["tab_observations"])
+    st.subheader(tr("tab_observations", "📈 Real Progress Log"))
     st.markdown(
         "Simulation is only the first half of ParallelMe. As you execute your decision in real life, "
         "log your actual hours and results weekly to see whether reality falls inside the simulated envelope."
@@ -671,7 +677,7 @@ with tab_observations:
     observations = db.list_observations(active_dec.id)
 
     # Logging Form
-    with st.expander(f"📝 {T['log_progress_title']}", expanded=(len(observations) == 0)):
+    with st.expander(f"📝 {tr('log_progress_title', 'Log Real Life Progress')}", expanded=(len(observations) == 0)):
         if not active_dec.scenarios:
             st.warning("Please define scenarios first.")
         else:
