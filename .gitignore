@@ -48,3 +48,9 @@ htmlcov/
 *.sqlite3
 exports/
 scratch/
+
+# Report documents & assets
+*.docx
+*.pdf
+bca_report_assets/
+bca_report_output/
