@@ -1,0 +1,44 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "parallelme"
+version = "0.1.0"
+description = "Transparent alternative decision simulation and empirical feedback engine."
+readme = "README.md"
+requires-python = ">=3.11"
+license = {text = "MIT"}
+authors = [
+    {name = "ParallelMe Maintainers"}
+]
+keywords = [
+    "simulation",
+    "decision-support",
+    "monte-carlo",
+    "uncertainty",
+    "learning-decisions"
+]
+dependencies = [
+    "numpy>=1.26.0",
+    "pandas>=2.1.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0.0",
+    "pytest-cov>=4.1.0",
+]
+ui = [
+    "streamlit>=1.35.0",
+    "plotly>=5.20.0",
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+minversion = "8.0"
+addopts = "-ra -q --strict-markers"
+testpaths = ["tests"]
+pythonpath = ["src"]

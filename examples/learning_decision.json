@@ -1,0 +1,116 @@
+{
+  "id": "3b29c914-7221-4f12-9c17-4581f182c161",
+  "title": "90-Day Engineering Study Allocation",
+  "description": "Evaluating 12-week preparation strategies between Data Structures & Algorithms and Practical AI/ML engineering under a 20 hr/week budget.",
+  "time_horizon_weeks": 12,
+  "max_weekly_hours": 20.0,
+  "scenarios": [
+    {
+      "id": "e44d5cf3-69dc-4613-bb18-a3f2d24497e1",
+      "decision_id": "3b29c914-7221-4f12-9c17-4581f182c161",
+      "name": "Heavy DSA Focus",
+      "description": "Allocate 16 hrs/week to DSA problem sets and 2 hrs/week to AI maintenance.",
+      "allocations": {
+        "DSA": 16.0,
+        "AI_ML": 2.0
+      },
+      "track_configs": {
+        "DSA": {
+          "name": "DSA",
+          "baseline_skill": 20.0,
+          "velocity_mean": 1.2,
+          "velocity_sd": 0.2,
+          "velocity_dist": "lognormal",
+          "retention_decay": 0.01,
+          "diminishing_returns": 0.004
+        },
+        "AI_ML": {
+          "name": "AI_ML",
+          "baseline_skill": 10.0,
+          "velocity_mean": 0.9,
+          "velocity_sd": 0.25,
+          "velocity_dist": "lognormal",
+          "retention_decay": 0.015,
+          "diminishing_returns": 0.006
+        }
+      },
+      "target_thresholds": {
+        "DSA": 150.0,
+        "AI_ML": 50.0
+      },
+      "created_at": "2026-10-29T12:00:00+00:00"
+    },
+    {
+      "id": "c61148e2-4bf8-4be6-8806-3fe67676e102",
+      "decision_id": "3b29c914-7221-4f12-9c17-4581f182c161",
+      "name": "Heavy AI/ML Focus",
+      "description": "Allocate 16 hrs/week to ML model development and 2 hrs/week to DSA maintenance.",
+      "allocations": {
+        "DSA": 2.0,
+        "AI_ML": 16.0
+      },
+      "track_configs": {
+        "DSA": {
+          "name": "DSA",
+          "baseline_skill": 20.0,
+          "velocity_mean": 1.2,
+          "velocity_sd": 0.2,
+          "velocity_dist": "lognormal",
+          "retention_decay": 0.01,
+          "diminishing_returns": 0.004
+        },
+        "AI_ML": {
+          "name": "AI_ML",
+          "baseline_skill": 10.0,
+          "velocity_mean": 0.9,
+          "velocity_sd": 0.25,
+          "velocity_dist": "lognormal",
+          "retention_decay": 0.015,
+          "diminishing_returns": 0.006
+        }
+      },
+      "target_thresholds": {
+        "DSA": 50.0,
+        "AI_ML": 100.0
+      },
+      "created_at": "2026-10-29T12:00:00+00:00"
+    },
+    {
+      "id": "a823e110-859a-42c2-b5e1-fa60a12e3456",
+      "decision_id": "3b29c914-7221-4f12-9c17-4581f182c161",
+      "name": "Balanced 50/50 Split",
+      "description": "Evenly split 9 hrs/week to DSA and 9 hrs/week to AI/ML with 2 buffer hours.",
+      "allocations": {
+        "DSA": 9.0,
+        "AI_ML": 9.0
+      },
+      "track_configs": {
+        "DSA": {
+          "name": "DSA",
+          "baseline_skill": 20.0,
+          "velocity_mean": 1.2,
+          "velocity_sd": 0.2,
+          "velocity_dist": "lognormal",
+          "retention_decay": 0.01,
+          "diminishing_returns": 0.004
+        },
+        "AI_ML": {
+          "name": "AI_ML",
+          "baseline_skill": 10.0,
+          "velocity_mean": 0.9,
+          "velocity_sd": 0.25,
+          "velocity_dist": "lognormal",
+          "retention_decay": 0.015,
+          "diminishing_returns": 0.006
+        }
+      },
+      "target_thresholds": {
+        "DSA": 100.0,
+        "AI_ML": 75.0
+      },
+      "created_at": "2026-10-29T12:00:00+00:00"
+    }
+  ],
+  "created_at": "2026-10-29T12:00:00+00:00",
+  "updated_at": "2026-10-29T12:00:00+00:00"
+}
