@@ -238,28 +238,28 @@ CREATE TABLE detected_gaps (
 The system replaces arbitrary, black-box scoring heuristics with transparent, mathematically grounded formulations.
 
 1. Skill Extraction via Boundary-Aware Exact Phrase Matching:
-Let $T$ denote the preprocessed resume text token stream. Let $S = \{s_1, s_2, \dots, s_n\}$ represent the canonical skill entities in the taxonomy, where each skill entity $s_i$ possesses an alias set $A(s_i) = \{a_{i1}, a_{i2}, \dots, a_{im}\}$. An alias $a_{ij}$ is matched if and only if:
-$$\text{Match}(a_{ij}, T) = \text{RegexSearch}\left( \backslash b + \text{Escape}(a_{ij}) + \backslash b, T, \text{IgnoreCase} \right)$$
-When a match is confirmed, the canonical key $s_i$ is appended to the Candidate Skills Set $C_{skills}$:
-$$C_{skills} = \{ s_i \in S \mid \exists a \in A(s_i) \text{ such that Match}(a, T) = \text{True} \}$$
+Let T denote the preprocessed resume text token stream. Let S = {s1, s2, ..., sn} represent the canonical skill entities in the taxonomy, where each skill entity si possesses an alias set A(si) = {ai1, ai2, ..., aim}. An alias aij is matched if and only if:
+Match(aij, T) = RegexSearch( WordBoundary + Escape(aij) + WordBoundary, T, IgnoreCase )
+When a match is confirmed, the canonical key si is appended to the Candidate Skills Set C_skills:
+C_skills = { si in S | exists a in A(si) such that Match(a, T) = True }
 
 2. Skill Coverage and Set-Theoretic Gap Detection:
-Let $J_{req}$ denote the set of mandatory skills extracted from the job description, and let $J_{pref}$ denote the set of preferred skills.
-• Matched Required Skills ($M_{req}$):
-$$M_{req} = C_{skills} \cap J_{req}$$
-• Missing Required Skills / Critical Gaps ($G_{req}$):
-$$G_{req} = J_{req} \setminus C_{skills} = \{ s \in J_{req} \mid s \notin C_{skills} \}$$
-• Matched Preferred Skills ($M_{pref}$):
-$$M_{pref} = C_{skills} \cap J_{pref}$$
-• Missing Preferred Skills ($G_{pref}$):
-$$G_{pref} = J_{pref} \setminus C_{skills} = \{ s \in J_{pref} \mid s \notin C_{skills} \}$$
+Let J_req denote the set of mandatory skills extracted from the job description, and let J_pref denote the set of preferred skills.
+• Matched Required Skills (M_req):
+M_req = C_skills ∩ J_req
+• Missing Required Skills / Critical Gaps (G_req):
+G_req = J_req \\ C_skills = { s in J_req | s not in C_skills }
+• Matched Preferred Skills (M_pref):
+M_pref = C_skills ∩ J_pref
+• Missing Preferred Skills (G_pref):
+G_pref = J_pref \\ C_skills = { s in J_pref | s not in C_skills }
 
 3. Transparent Mathematical Compatibility Scoring:
-The Overall Compatibility Score ($S_{total}$) is computed as a normalized weighted linear combination of Mandatory Skill Coverage ($Cov_{req}$) and Preferred Skill Coverage ($Cov_{pref}$):
-$$Cov_{req} = \begin{cases} \frac{|M_{req}|}{|J_{req}|} \times 100 & \text{if } |J_{req}| > 0 \\ 100 & \text{if } |J_{req}| = 0 \end{cases}$$
-$$Cov_{pref} = \begin{cases} \frac{|M_{pref}|}{|J_{pref}|} \times 100 & \text{if } |J_{pref}| > 0 \\ 100 & \text{if } |J_{pref}| = 0 \end{cases}$$
-$$S_{total} = w_{req} \cdot Cov_{req} + w_{pref} \cdot Cov_{pref}$$
-Where the baseline configuration assigns $w_{req} = 0.80$ (80% weight to mandatory technical prerequisites) and $w_{pref} = 0.20$ (20% weight to preferred tools and soft skills), such that $w_{req} + w_{pref} = 1.0$.
+The Overall Compatibility Score (S_total) is computed as a normalized weighted linear combination of Mandatory Skill Coverage (Cov_req) and Preferred Skill Coverage (Cov_pref):
+Cov_req = (|M_req| / |J_req|) * 100 (if |J_req| > 0, else 100%)
+Cov_pref = (|M_pref| / |J_pref|) * 100 (if |J_pref| > 0, else 100%)
+S_total = w_req * Cov_req + w_pref * Cov_pref
+Where the baseline configuration assigns w_req = 0.80 (80% weight to mandatory technical prerequisites) and w_pref = 0.20 (20% weight to preferred tools and soft skills), such that w_req + w_pref = 1.0.
 
 Important Clarification: The resulting score $S_{total} \in [0, 100]$ represents an objective measure of curriculum alignment and prerequisite fulfillment. It is explicitly not a guarantee of employment, nor does it measure intangible human attributes such as leadership, cultural alignment, or interview poise."""
 

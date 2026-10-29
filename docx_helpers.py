@@ -1,4 +1,5 @@
 import os
+import re
 import docx
 from docx import Document
 from docx.shared import Inches, Pt, RGBColor
@@ -6,6 +7,13 @@ from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.enum.table import WD_TABLE_ALIGNMENT, WD_ALIGN_VERTICAL
 from docx.oxml import OxmlElement, parse_xml
 from docx.oxml.ns import nsdecls, qn
+
+def sanitize_xml_text(text: str) -> str:
+    """Removes XML 1.0 invalid control characters (e.g. backspace \b, null, etc.)"""
+    if not isinstance(text, str):
+        text = str(text)
+    # Allow tab (\x09), line feed (\x0A), carriage return (\x0D), and printable range \x20-\uD7FF
+    return re.sub(r'[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]', '', text)
 
 def set_cell_background(cell, fill_hex):
     tcPr = cell._element.get_or_add_tcPr()
@@ -33,6 +41,7 @@ def set_table_borders(table, color="D3D3D3", sz="4", val="single"):
         tblPr[0].append(borders)
 
 def add_styled_heading(doc, text, level):
+    text = sanitize_xml_text(text)
     p = doc.add_paragraph()
     p.paragraph_format.keep_with_next = True
     run = p.add_run(text)
@@ -57,6 +66,7 @@ def add_styled_heading(doc, text, level):
     return p
 
 def add_body_p(doc, text, bold_prefix=None, space_after=6):
+    text = sanitize_xml_text(text)
     p = doc.add_paragraph()
     p.paragraph_format.space_before = Pt(0)
     p.paragraph_format.space_after = Pt(space_after)
@@ -64,6 +74,7 @@ def add_body_p(doc, text, bold_prefix=None, space_after=6):
     p.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
     
     if bold_prefix:
+        bold_prefix = sanitize_xml_text(bold_prefix)
         r_pre = p.add_run(bold_prefix)
         r_pre.font.name = 'Times New Roman'
         r_pre.font.size = Pt(11)
@@ -77,6 +88,7 @@ def add_body_p(doc, text, bold_prefix=None, space_after=6):
     return p
 
 def add_bullet_p(doc, text, bold_prefix=None):
+    text = sanitize_xml_text(text)
     p = doc.add_paragraph(style='List Bullet')
     p.paragraph_format.space_before = Pt(0)
     p.paragraph_format.space_after = Pt(4)
@@ -84,6 +96,7 @@ def add_bullet_p(doc, text, bold_prefix=None):
     p.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
     
     if bold_prefix:
+        bold_prefix = sanitize_xml_text(bold_prefix)
         r_pre = p.add_run(bold_prefix)
         r_pre.font.name = 'Times New Roman'
         r_pre.font.size = Pt(11)
@@ -107,7 +120,7 @@ def add_image_figure(doc, img_path, caption):
         p_cap.alignment = WD_ALIGN_PARAGRAPH.CENTER
         p_cap.paragraph_format.space_before = Pt(2)
         p_cap.paragraph_format.space_after = Pt(12)
-        r_cap = p_cap.add_run(caption)
+        r_cap = p_cap.add_run(sanitize_xml_text(caption))
         r_cap.font.name = 'Times New Roman'
         r_cap.font.size = Pt(10)
         r_cap.italic = True
@@ -120,7 +133,7 @@ def format_custom_table(table, col_widths, headers, rows_data):
     # Header Row
     hdr_cells = table.rows[0].cells
     for i, h_text in enumerate(headers):
-        hdr_cells[i].text = h_text
+        hdr_cells[i].text = sanitize_xml_text(h_text)
         set_cell_background(hdr_cells[i], "1B365D")
         set_cell_margins(hdr_cells[i], top=120, bottom=120, left=150, right=150)
         p = hdr_cells[i].paragraphs[0]
@@ -138,7 +151,7 @@ def format_custom_table(table, col_widths, headers, rows_data):
         row_cells = table.rows[r_idx + 1].cells
         bg_col = "F8FAFC" if r_idx % 2 == 1 else "FFFFFF"
         for c_idx, val in enumerate(r_data):
-            row_cells[c_idx].text = str(val)
+            row_cells[c_idx].text = sanitize_xml_text(str(val))
             set_cell_background(row_cells[c_idx], bg_col)
             set_cell_margins(row_cells[c_idx], top=80, bottom=80, left=150, right=150)
             p = row_cells[c_idx].paragraphs[0]
@@ -153,5 +166,3 @@ def format_custom_table(table, col_widths, headers, rows_data):
     for row in table.rows:
         for idx, width in enumerate(col_widths):
             row.cells[idx].width = width
-
-print("Docx helper module defined successfully.")
